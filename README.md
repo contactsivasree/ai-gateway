@@ -1,137 +1,153 @@
-# AI Gateway Test
+# AI Gateway
 
-A simple Python project demonstrating how to connect an application to a local **FreeLLMAPI** gateway using the **OpenAI-compatible API**.
+A Python project demonstrating how applications can connect to multiple AI providers through a single **OpenAI-compatible AI gateway**.
 
-The purpose of this project is to learn and experiment with multi-provider AI access through a single local API endpoint.
+This project uses **FreeLLMAPI** as the local gateway and connects providers such as Google AI Studio and Groq behind one unified API interface.
 
 ## Architecture
 
 ```text
-Python Application
-       |
-       v
-OpenAI Python SDK
-       |
-       v
-FreeLLMAPI
-http://localhost:3001/v1
-       |
-       +------------------+
-       |                  |
-       v                  v
-   Google AI Studio      Groq
-       |                  |
-    Gemini          GPT-OSS 120B
+                    AI Applications
+                          |
+                          v
+                 OpenAI Python SDK
+                          |
+                          v
+                  ┌──────────────┐
+                  │  AI Gateway  │
+                  │  localhost   │
+                  │   :3001/v1   │
+                  └──────┬───────┘
+                         |
+               ┌─────────┴─────────┐
+               |                   |
+               v                   v
+        Google AI Studio          Groq
+               |                   |
+            Gemini            GPT-OSS 120B
 ```
+
+## Project Goals
+
+The goal of this project is to learn how a single AI gateway can provide a consistent API interface while routing requests to different AI providers and models.
+
+The project is designed as a foundation for future AI applications and experiments.
 
 ## What This Project Demonstrates
 
-- Using the OpenAI Python SDK with a non-OpenAI endpoint
-- Connecting Python to a local AI gateway
-- Using environment variables for API credentials
-- Routing requests through FreeLLMAPI
-- Using `auto` model selection
-- Working with multiple AI providers through one API
-- Keeping API credentials out of Git
+- OpenAI-compatible API usage
+- Python integration with an AI gateway
+- Multi-provider AI access
+- AI model routing
+- Automatic model selection
+- Fastest, Balanced, and Smartest routing strategies
+- Environment-based API configuration
+- Secure handling of API credentials
+- Provider abstraction
+- A reusable foundation for future AI applications
 
-## Prerequisites
+## Current AI Providers
 
-- Python 3.10+
-- FreeLLMAPI running locally
-- At least one configured AI provider in FreeLLMAPI
-- A FreeLLMAPI Unified API key
+### Google AI Studio
 
-The default FreeLLMAPI endpoint used by this project is:
+Configured models include Gemini models such as:
+
+- Gemini 3.6 Flash
+- Gemini 3.5 Flash
+- Gemini 3 Flash Preview
+- Gemini 3.5 Flash Lite
+- Gemini 3.1 Flash-Lite
+- Gemini 2.5 Flash
+- Gemini 2.5 Flash-Lite
+- Gemma models
+
+### Groq
+
+Configured models include:
+
+- GPT-OSS 120B
+- GPT-OSS 20B
+- Compound
+- Compound Mini
+- Other available Groq models
+
+Provider availability and model availability may change over time.
+
+## API Architecture
+
+Applications communicate with one local endpoint:
 
 ```text
 http://localhost:3001/v1
 ```
 
-## Setup
-
-### 1. Clone the repository
-
-```bash
-git clone <your-repository-url>
-cd ai-gateway-test
-```
-
-### 2. Create a virtual environment
-
-```powershell
-python -m venv .venv
-```
-
-### 3. Activate the environment
-
-Windows PowerShell:
-
-```powershell
-.\.venv\Scripts\Activate.ps1
-```
-
-### 4. Install dependencies
-
-```powershell
-pip install -r requirements.txt
-```
-
-### 5. Configure environment variables
-
-Create a `.env` file:
+Instead of implementing separate integrations:
 
 ```text
-FREELLMAPI_API_KEY=your-unified-api-key
-FREELLMAPI_BASE_URL=http://localhost:3001/v1
+Application
+   |
+   +--> Google API
+   +--> Groq API
+   +--> OpenAI API
+   +--> Other providers
 ```
 
-**Never commit `.env` to GitHub.**
-
-The repository's `.gitignore` already excludes it.
-
-## Run
-
-Make sure FreeLLMAPI is running and then execute:
-
-```powershell
-python main.py
-```
-
-The application sends a request using:
+the application communicates with the gateway:
 
 ```text
-model = auto
+Application
+      |
+      v
+  AI Gateway
+      |
+      +--> Google
+      +--> Groq
+      +--> Other providers
 ```
 
-FreeLLMAPI then selects the appropriate model according to its active routing configuration.
+This allows the application code to remain largely provider-independent.
 
-## Example
+## Routing
 
-The program prints:
+The gateway supports different routing strategies.
+
+### Fastest
+
+Prioritizes model speed.
+
+Example observed result:
 
 ```text
---- AI Response ---
-<AI-generated response>
-
---- Routing ---
-Model: openai/gpt-oss-120b
+Groq → GPT-OSS 120B
 ```
 
-The selected provider/model may change depending on the FreeLLMAPI routing configuration and available providers.
+### Balanced
 
-## Routing Experiments
+Balances:
 
-FreeLLMAPI supports different routing strategies.
+- Reliability
+- Speed
+- Intelligence
 
-Examples explored during development:
+Example observed result:
 
-| Strategy | Example result |
-|---|---|
-| Fastest | Groq / GPT-OSS 120B |
-| Balanced | Groq / GPT-OSS 120B |
-| Smartest | Google / Gemini 3.6 Flash |
+```text
+Groq → GPT-OSS 120B
+```
 
-FreeLLMAPI also provides API-level model selectors such as:
+### Smartest
+
+Places greater weight on model intelligence.
+
+Example observed result:
+
+```text
+Google → Gemini 3.6 Flash
+```
+
+## API-Level Model Selection
+
+The gateway can also accept routing selectors such as:
 
 ```text
 auto
@@ -141,13 +157,128 @@ auto:balanced
 auto:reliable
 ```
 
-These allow applications to request different routing behavior without changing provider-specific application code.
+For example:
+
+```python
+response = client.chat.completions.create(
+    model="auto:fast",
+    messages=[
+        {
+            "role": "user",
+            "content": "Explain RAG in simple terms.",
+        }
+    ],
+)
+```
+
+The application does not need to know which provider ultimately handles the request.
+
+## Python Client
+
+This project uses the standard OpenAI Python SDK.
+
+Example:
+
+```python
+import os
+
+from dotenv import load_dotenv
+from openai import OpenAI
+
+load_dotenv()
+
+client = OpenAI(
+    api_key=os.getenv("FREELLMAPI_API_KEY"),
+    base_url=os.getenv("FREELLMAPI_BASE_URL"),
+)
+
+response = client.chat.completions.create(
+    model="auto",
+    messages=[
+        {
+            "role": "user",
+            "content": "Explain what an AI API gateway is in simple terms.",
+        }
+    ],
+)
+
+print(response.choices[0].message.content)
+print(response.model)
+```
+
+## Setup
+
+### Prerequisites
+
+- Python 3.10+
+- Git
+- FreeLLMAPI running locally
+- At least one configured AI provider
+- FreeLLMAPI Unified API key
+
+### Clone
+
+```bash
+git clone https://github.com/sivasreeonline/ai-gateway.git
+cd ai-gateway
+```
+
+### Create a virtual environment
+
+```powershell
+python -m venv .venv
+```
+
+### Activate the environment
+
+```powershell
+.\.venv\Scripts\Activate.ps1
+```
+
+### Install dependencies
+
+```powershell
+pip install -r requirements.txt
+```
+
+### Configure environment variables
+
+Create a `.env` file:
+
+```text
+FREELLMAPI_API_KEY=your-unified-api-key
+FREELLMAPI_BASE_URL=http://localhost:3001/v1
+```
+
+Never commit `.env` to GitHub.
+
+The repository's `.gitignore` already excludes it.
+
+### Run
+
+Make sure FreeLLMAPI is running and execute:
+
+```powershell
+python main.py
+```
+
+Example output:
+
+```text
+--- AI Response ---
+<AI-generated response>
+
+--- Routing ---
+Model: openai/gpt-oss-120b
+```
+
+The selected provider and model can change depending on the active routing strategy and available models.
 
 ## Security
 
-This project intentionally keeps credentials outside the source code.
+API credentials are stored outside the source code.
 
-Ignored files include:
+The following files are excluded from Git:
 
 ```text
 .env
@@ -156,50 +287,57 @@ __pycache__/
 *.pyc
 ```
 
-Never commit API keys, passwords, tokens, or other secrets.
+Never commit:
 
-## Why Use an AI Gateway?
+- API keys
+- Passwords
+- Access tokens
+- Secret credentials
+- Private configuration files
 
-Instead of writing provider-specific code:
+## Future Development
 
-```text
-Application
-   |
-   +--> Google API
-   |
-   +--> Groq API
-   |
-   +--> OpenAI API
-   |
-   +--> Other providers
-```
+This project will serve as a foundation for experimenting with:
 
-the application can use one interface:
-
-```text
-Application
-     |
-     v
-FreeLLMAPI
-     |
-     +--> Google
-     +--> Groq
-     +--> Other providers
-```
-
-This makes it easier to experiment with models, providers, routing strategies, and failover without changing the core application.
-
-## Learning Goals
-
-This project is part of an ongoing AI engineering learning path.
-
-Future experiments may include:
-
-- Multi-provider AI applications
 - RAG applications
+- AI-powered DSA tutoring
+- Interview assistants
+- AI agents
+- Structured outputs
+- Tool calling
+- Embeddings
+- Multimodal AI
+- Local AI models
+- Hybrid local + cloud AI
+- Android AI applications
+- Model benchmarking
+- LiteLLM
+- Additional AI providers
+- Provider failover
+- AI application architectures
+
+## Learning Path
+
+```text
+AI Gateway
+     |
+     +--> Multi-provider AI
+     |
+     +--> Routing
+     |
+     +--> RAG
+     |
+     +--> AI Agents
+     |
+     +--> Local AI
+     |
+     +--> Hybrid AI
+     |
+     +--> Production AI Architecture
+```
 
 ## Disclaimer
 
 This project is intended for **learning, experimentation, and prototyping**.
 
-AI provider availability, limits, pricing, models, and free-tier policies may change. Always follow the terms and usage policies of the providers you use.
+AI provider availability, pricing, quotas, models, and free-tier policies may change. Always follow the terms and usage policies of the providers you use.
