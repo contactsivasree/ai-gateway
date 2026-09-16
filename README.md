@@ -295,46 +295,7 @@ Never commit:
 - Secret credentials
 - Private configuration files
 
-## Future Development
 
-This project will serve as a foundation for experimenting with:
-
-- RAG applications
-- AI-powered DSA tutoring
-- Interview assistants
-- AI agents
-- Structured outputs
-- Tool calling
-- Embeddings
-- Multimodal AI
-- Local AI models
-- Hybrid local + cloud AI
-- Android AI applications
-- Model benchmarking
-- LiteLLM
-- Additional AI providers
-- Provider failover
-- AI application architectures
-
-## Learning Path
-
-```text
-AI Gateway
-     |
-     +--> Multi-provider AI
-     |
-     +--> Routing
-     |
-     +--> RAG
-     |
-     +--> AI Agents
-     |
-     +--> Local AI
-     |
-     +--> Hybrid AI
-     |
-     +--> Production AI Architecture
-```
 
 ## Disclaimer
 
